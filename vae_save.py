@@ -1,8 +1,8 @@
 import torch
 import os
+import numpy as np
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
-import numpy as np
 from VAE import VAEWithBoundingBox, MNISTWithBBox, train_vae_with_bbox
 
 # Define file paths for saving the model and outputs
@@ -24,16 +24,16 @@ def save_vae_outputs(model, dataloader, output_dir, num_batches=10):
     with torch.no_grad():
         for batch_idx, (data, bbox) in enumerate(dataloader):
             data = data.view(-1, 784)
-            recon_batch, pred_bbox, mu, logvar = model(data)
+            recon_batch, pred_bbox, mu, logvar, z = model(data)  # Updated to get z
             
             for i in range(data.size(0)):
                 original_img = data[i].view(1, 28, 28).cpu().numpy()
                 reconstructed_img = recon_batch[i].view(1, 28, 28).cpu().numpy()
-                bbox = pred_bbox[i].cpu().numpy()
-                
+                latent_vector = z[i].cpu().numpy()  # Latent vector
+
                 np.save(os.path.join(output_dir, f'original_img_{idx}.npy'), original_img)
                 np.save(os.path.join(output_dir, f'reconstructed_img_{idx}.npy'), reconstructed_img)
-                np.save(os.path.join(output_dir, f'bbox_{idx}.npy'), bbox)
+                np.save(os.path.join(output_dir, f'latent_vector_{idx}.npy'), latent_vector)  # Save latent vector
                 idx += 1
 
             if batch_idx >= num_batches - 1:

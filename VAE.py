@@ -6,7 +6,7 @@ from torchvision import transforms, datasets
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-
+import os
 
 # Helper function to calculate bounding box
 def get_bounding_box(img):
@@ -78,7 +78,7 @@ class VAEWithBoundingBox(nn.Module):
         mu, logvar = self.encoder(x)
         z = self.reparameterize(mu, logvar)
         recon_x, bbox = self.decoder(z)
-        return recon_x, bbox, mu, logvar
+        return recon_x, bbox, mu, logvar, z  # Added z to the return values
 
 def bbox_loss(pred_bbox, true_bbox):
     return nn.functional.mse_loss(pred_bbox, true_bbox, reduction='sum')
@@ -98,7 +98,7 @@ def train_vae_with_bbox(model, dataloader, epochs=10, lr=1e-3):
         for batch_idx, (data, bbox) in enumerate(dataloader):
             data = data.view(-1, 784)
             optimizer.zero_grad()
-            recon_batch, pred_bbox, mu, logvar = model(data)
+            recon_batch, pred_bbox, mu, logvar, _ = model(data)  # Updated to get z
             loss = loss_function_with_bbox(recon_batch, data, pred_bbox, bbox, mu, logvar)
             loss.backward()
             train_loss += loss.item()
@@ -110,7 +110,6 @@ latent_dim = 20
 vae_bbox = VAEWithBoundingBox(latent_dim)
 train_vae_with_bbox(vae_bbox, dataloader)
 
-
 def visualize_output(model, dataloader, num_images=10):
     model.eval()
     with torch.no_grad():
@@ -118,7 +117,7 @@ def visualize_output(model, dataloader, num_images=10):
         images, _ = next(data_iter)
         images = images.view(-1, 784)
         
-        recon_images, pred_bboxes, _, _ = model(images)
+        recon_images, pred_bboxes, _, _, _ = model(images)  # Updated to get z
         
         images = images.view(-1, 1, 28, 28).cpu().numpy()
         recon_images = recon_images.view(-1, 1, 28, 28).cpu().numpy()
