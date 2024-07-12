@@ -1,0 +1,26 @@
+{
+    "vae": {
+        "latent_dim": 64,
+        "epochs": 10,
+        "lr": 0.001,
+        "output_dir": "/home/anirudh/Desktop/Projects/Personal/VGOCR/models/vae",
+        "model_save_path": "/home/anirudh/Desktop/Projects/Personal/VGOCR/models/vae/vae_model.pt"
+    },
+    "gan": {
+        "batch_size": 64,
+        "epochs": 20,
+        "lr": 0.0002,
+        "model_dir": "/home/anirudh/Desktop/Projects/Personal/VGOCR/models/gan",
+        "synthetic_dir": "/home/anirudh/Desktop/Projects/Personal/VGOCR/data/synthetic_data",
+        "augmented_dir": "/home/anirudh/Desktop/Projects/Personal/VGOCR/data/augmented_data"
+    },
+    "ocr": {
+        "data_dir": "/home/anirudh/Desktop/Projects/Personal/VGOCR/data/augmented_data",
+        "batch_size": 32,
+        "epochs": 15,
+        "lr": 0.001,
+        "num_classes": 10,
+        "model_save_path": "/home/anirudh/Desktop/Projects/Personal/VGOCR/models/ocr/ocr_model.pt",
+        "max_seq_length": 10
+    }
+}
