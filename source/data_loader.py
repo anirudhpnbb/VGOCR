@@ -1,12 +1,13 @@
 import os
 import numpy as np
-from torch.utils.data import Dataset
-from torchvision import datasets
 import torch
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
+from PIL import Image
 
 # Helper function to calculate bounding box
 def get_bounding_box(img):
-    img = img.squeeze()  # Remove single-dimensional entries from the shape of an array
+    img = img.squeeze()
     rows = np.any(img, axis=1)
     cols = np.any(img, axis=0)
     rmin, rmax = np.where(rows)[0][[0, -1]]
@@ -44,6 +45,8 @@ class LatentDataset(Dataset):
         image_path = os.path.join(self.latent_dir, self.image_files[idx])
         latent_vector = np.load(latent_path)
         real_image = np.load(image_path)
+        real_image = real_image.squeeze()  # Ensure the image is 2D
+        real_image = Image.fromarray((real_image * 255).astype(np.uint8))  # Convert numpy array to PIL Image
         if self.transform:
             real_image = self.transform(real_image)
         return torch.tensor(latent_vector, dtype=torch.float32), real_image
@@ -62,10 +65,20 @@ class AugmentedDataset(Dataset):
     def __getitem__(self, idx):
         image_path = os.path.join(self.data_dir, self.image_files[idx])
         label_path = os.path.join(self.data_dir, self.labels[idx])
+        
+        if not os.path.exists(label_path):
+            raise FileNotFoundError(f"Label file {label_path} does not exist.")
+        
         image = np.load(image_path)
-        label = np.load(label_path)
+        image = image.squeeze()  # Ensure the image is 2D
+        image = Image.fromarray((image * 255).astype(np.uint8))  # Convert numpy array to PIL Image
+        
         if self.transform:
             image = self.transform(image)
-        label = torch.from_numpy(label)
-        label_length = len(label)
-        return image, label, label_length
+        
+        label = np.load(label_path)
+        if label.ndim == 0:  # Handle case where label is a scalar
+            label = np.expand_dims(label, axis=0)
+        label = torch.from_numpy(label).long()  # Ensure label is a long tensor
+        
+        return image, label, len(label)

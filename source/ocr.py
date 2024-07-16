@@ -1,27 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
+from torch.utils.data import DataLoader
+from torchvision import transforms
 import os
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
+import numpy as np
 from PIL import Image
 
-def generate_and_save_labels(data_dir):
-    image_files = sorted([f for f in os.listdir(data_dir) if 'img' in f])
-    label_files = sorted([f for f in os.listdir(data_dir) if 'label' in f])
-    if len(label_files) == 0:
-        print("No label files found. Generating labels...")
-        num_images = len(image_files)
-        labels = np.random.randint(0, 10, size=num_images)
-        for idx, image_file in enumerate(image_files):
-            label = labels[idx]
-            label_filename = image_file.replace('img', 'label')
-            label_path = os.path.join(data_dir, label_filename)
-            np.save(label_path, label)
-            print(f'Saved label {label} to {label_path}')
-    else:
-        print("Label files found. Skipping label generation.")
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torchvision import transforms
+import os
 
 class CRNN(nn.Module):
     def __init__(self, imgH, nc, nclass, nh):
@@ -37,22 +28,21 @@ class CRNN(nn.Module):
         def convRelu(i, batchNormalization=False):
             nIn = nc if i == 0 else nm[i - 1]
             nOut = nm[i]
-            cnn.add_module('conv{0}'.format(i),
-                           nn.Conv2d(nIn, nOut, ks[i], ss[i], ps[i]))
+            cnn.add_module(f'conv{i}', nn.Conv2d(nIn, nOut, ks[i], ss[i], ps[i]))
             if batchNormalization:
-                cnn.add_module('batchnorm{0}'.format(i), nn.BatchNorm2d(nOut))
-            cnn.add_module('relu{0}'.format(i), nn.ReLU(True))
+                cnn.add_module(f'batchnorm{i}', nn.BatchNorm2d(nOut))
+            cnn.add_module(f'relu{i}', nn.ReLU(True))
 
         convRelu(0)
-        cnn.add_module('pooling{0}'.format(0), nn.MaxPool2d(2, 2))  # 64x16x16
+        cnn.add_module('pooling0', nn.MaxPool2d(2, 2))  # 64x16x16
         convRelu(1)
-        cnn.add_module('pooling{1}'.format(1), nn.MaxPool2d(2, 2))  # 128x8x8
+        cnn.add_module('pooling1', nn.MaxPool2d(2, 2))  # 128x8x8
         convRelu(2, True)
         convRelu(3)
-        cnn.add_module('pooling{2}'.format(2), nn.MaxPool2d((2, 2), (2, 2), (0, 0)))  # 256x4x4
+        cnn.add_module('pooling2', nn.MaxPool2d((2, 2), (2, 2), (0, 0)))  # 256x4x4
         convRelu(4, True)
         convRelu(5)
-        cnn.add_module('pooling{3}'.format(3), nn.MaxPool2d((2, 2), (2, 2), (0, 0)))  # 512x2x2
+        cnn.add_module('pooling3', nn.MaxPool2d((2, 2), (2, 2), (0, 0)))  # 512x2x2
         convRelu(6, True)
 
         self.cnn = cnn
@@ -70,8 +60,10 @@ class CRNN(nn.Module):
         conv = conv.permute(0, 2, 1)  # [b, w, c]
 
         # RNN layers
-        rnn = self.rnn(conv)
-        return rnn
+        rnn_output, _ = self.rnn[0](conv)  # Use only the output of LSTM
+        output = self.rnn[1](rnn_output)
+        return output
+
 
 def train_crnn(model, dataloader, device, epochs=100, lr=0.001):
     criterion = nn.CTCLoss(blank=0)
@@ -85,6 +77,7 @@ def train_crnn(model, dataloader, device, epochs=100, lr=0.001):
             optimizer.zero_grad()
             outputs = model(images)
             outputs = outputs.permute(1, 0, 2)  # [w, b, c]
+            outputs_lengths = torch.full(size=(outputs.size(1),), fill_value=outputs.size(0), dtype=torch.long).to(device)
             loss = criterion(outputs, labels, outputs_lengths, label_lengths)
             loss.backward()
             optimizer.step()
@@ -110,11 +103,10 @@ def evaluate_crnn(model, dataloader, device):
             correct += sum([1 for p, t in zip(predicted_text, labels) if p == t])
     print(f'Accuracy of the model on the test images: {100 * correct / total} %')
 
-def image_to_text(image_path, model, transform):
+def image_to_text(image_path, model, transform, device):
     image = Image.open(image_path).convert('L')
     image = transform(image)
     image = image.unsqueeze(0)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     image = image.to(device)
     with torch.no_grad():
@@ -123,3 +115,27 @@ def image_to_text(image_path, model, transform):
         predicted = predicted.squeeze().detach().cpu().numpy()
         predicted_text = "".join([str(p) for p in predicted if p != 0])
     return predicted_text
+
+def generate_and_save_labels(data_dir):
+    """
+    Generates and saves labels for images in the specified directory.
+
+    Args:
+    - data_dir (str): Directory containing images.
+    """
+    image_files = sorted([f for f in os.listdir(data_dir) if 'img' in f])
+    label_files = sorted([f for f in os.listdir(data_dir) if 'label' in f])
+    
+    if len(label_files) == 0:
+        print("No label files found. Generating labels...")
+        num_images = len(image_files)
+        labels = [np.random.randint(0, 10, size=(5,)) for _ in range(num_images)]  # Save labels as sequences of length 5
+        
+        for idx, image_file in enumerate(image_files):
+            label = labels[idx]
+            label_filename = image_file.replace('img', 'label')
+            label_path = os.path.join(data_dir, label_filename)
+            np.save(label_path, label)
+            print(f'Saved label {label} to {label_path}')
+    else:
+        print("Label files found. Skipping label generation.")

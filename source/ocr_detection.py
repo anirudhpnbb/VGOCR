@@ -4,7 +4,7 @@ from PIL import Image
 import argparse
 import json
 from ocr import OCRModel, image_to_text
-from source.utils import load_config
+from utils import load_config
 
 def load_model(model_path, num_classes, max_seq_length, device):
     model = OCRModel(num_classes, max_seq_length)
@@ -22,7 +22,7 @@ def main(config, image_path):
     # Define the transform
     transform = transforms.Compose([
         transforms.Grayscale(),
-        transforms.Resize((28, 28)),
+        transforms.Resize((32, 32)),
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
     ])

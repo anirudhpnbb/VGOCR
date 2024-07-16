@@ -1,3 +1,5 @@
+# source/gan.py
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -42,6 +44,11 @@ class Discriminator(nn.Module):
         return validity
 
 def train_gan(generator, discriminator, dataloader, latent_dim, img_shape, device, gan_model_dir, synthetic_dir, augmented_dir, epochs=1000, lr=0.0002, save_interval=10):
+    # Ensure directories exist
+    os.makedirs(gan_model_dir, exist_ok=True)
+    os.makedirs(synthetic_dir, exist_ok=True)
+    os.makedirs(augmented_dir, exist_ok=True)
+
     adversarial_loss = nn.BCELoss().to(device)
     generator.to(device)
     discriminator.to(device)
@@ -57,12 +64,18 @@ def train_gan(generator, discriminator, dataloader, latent_dim, img_shape, devic
             real_images = real_images.to(device)
             latent_vectors = latent_vectors.to(device)
 
+            # -----------------
+            #  Train Generator
+            # -----------------
             optimizer_G.zero_grad()
             gen_images = generator(latent_vectors)
             g_loss = adversarial_loss(discriminator(gen_images), valid)
             g_loss.backward()
             optimizer_G.step()
 
+            # ---------------------
+            #  Train Discriminator
+            # ---------------------
             optimizer_D.zero_grad()
             real_loss = adversarial_loss(discriminator(real_images), valid)
             fake_loss = adversarial_loss(discriminator(gen_images.detach()), fake)
@@ -73,6 +86,7 @@ def train_gan(generator, discriminator, dataloader, latent_dim, img_shape, devic
             if i % 200 == 0:
                 print(f'Epoch [{epoch}/{epochs}] Batch {i}/{len(dataloader)} Loss D: {d_loss.item()}, loss G: {g_loss.item()}')
 
+        # Save synthetic images and augmented data at intervals
         if epoch % save_interval == 0:
             torch.save(generator.state_dict(), os.path.join(gan_model_dir, f'generator_epoch_{epoch}.pth'))
             torch.save(discriminator.state_dict(), os.path.join(gan_model_dir, f'discriminator_epoch_{epoch}.pth'))
@@ -88,7 +102,3 @@ def train_gan(generator, discriminator, dataloader, latent_dim, img_shape, devic
                 np.save(os.path.join(augmented_dir, f'augmented_real_img_{epoch}_{idx}.npy'), real_img)
                 np.save(os.path.join(augmented_dir, f'augmented_synthetic_img_{epoch}_{idx}.npy'), fake_img)
             print(f'Saved synthetic images and augmented dataset at epoch {epoch}')
-
-def denorm(x):
-    out = (x + 1) / 2
-    return out.clamp(0, 1)

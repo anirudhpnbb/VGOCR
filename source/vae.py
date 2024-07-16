@@ -7,7 +7,7 @@ import os
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
-        self.fc1 = nn.Linear(784, 400)
+        self.fc1 = nn.Linear(1024, 400)  # Adjusted from 784 to 1024
         self.fc21 = nn.Linear(400, latent_dim)
         self.fc22 = nn.Linear(400, latent_dim)
 
@@ -19,7 +19,7 @@ class DecoderWithBoundingBox(nn.Module):
     def __init__(self, latent_dim):
         super(DecoderWithBoundingBox, self).__init__()
         self.fc3 = nn.Linear(latent_dim, 400)
-        self.fc4 = nn.Linear(400, 784)
+        self.fc4 = nn.Linear(400, 1024)  # Adjusted from 784 to 1024
         self.fc5 = nn.Linear(400, 4)
 
     def forward(self, z):
@@ -63,7 +63,7 @@ def train_vae_with_bbox(model, dataloader, device, epochs=100, lr=1e-3):
         train_loss = 0
         for batch_idx, (data, bbox) in enumerate(dataloader):
             data, bbox = data.to(device), bbox.to(device)
-            data = data.view(-1, 784)
+            data = data.view(-1, 1024)  # Adjusted from 784 to 1024
             optimizer.zero_grad()
             recon_batch, pred_bbox, mu, logvar, _ = model(data)
             loss = loss_function_with_bbox(recon_batch, data, pred_bbox, bbox, mu, logvar)
@@ -85,11 +85,11 @@ def save_vae_outputs(model, dataloader, output_dir, device, num_batches=10):
     with torch.no_grad():
         for batch_idx, (data, bbox) in enumerate(dataloader):
             data, bbox = data.to(device), bbox.to(device)
-            data = data.view(-1, 784)
+            data = data.view(-1, 1024)  # Adjusted from 784 to 1024
             recon_batch, pred_bbox, mu, logvar, z = model(data)
             for i in range(data.size(0)):
-                original_img = data[i].view(1, 28, 28).cpu().numpy()
-                reconstructed_img = recon_batch[i].view(1, 28, 28).cpu().numpy()
+                original_img = data[i].view(1, 32, 32).cpu().numpy()  # Adjusted from (1, 28, 28) to (1, 32, 32)
+                reconstructed_img = recon_batch[i].view(1, 32, 32).cpu().numpy()  # Adjusted from (1, 28, 28) to (1, 32, 32)
                 latent_vector = z[i].cpu().numpy()
                 np.save(os.path.join(output_dir, f'original_img_{idx}.npy'), original_img)
                 np.save(os.path.join(output_dir, f'reconstructed_img_{idx}.npy'), reconstructed_img)
