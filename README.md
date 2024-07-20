@@ -37,7 +37,7 @@ VGOCR is a comprehensive Optical Character Recognition (OCR) system that utilize
 - `train.py`: Script to train the OCR model.
 - `VAE.py`: Script to train the VAE model.
 - `gan.py`: Script to train the GAN model.
-- `ocr_detection.py`: Script to run OCR detection.
+- `ocr.py`: Script to run OCR detection.
 - `requirements.txt`: List of dependencies.
 
 ## License
