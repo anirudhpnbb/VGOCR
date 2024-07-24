@@ -3,11 +3,11 @@ from torchvision import transforms
 from PIL import Image
 import argparse
 import json
-from ocr import OCRModel, image_to_text
+from ocr import CRNN, image_to_text
 from utils import load_config
 
-def load_model(model_path, num_classes, max_seq_length, device):
-    model = OCRModel(num_classes, max_seq_length)
+def load_model(model_path, imgH, nc, nclass, nh, device):
+    model = CRNN(imgH, nc, nclass, nh)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
@@ -17,7 +17,12 @@ def main(config, image_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     # Load the OCR model
-    ocr_model = load_model(config['ocr']['model_save_path'], config['ocr']['num_classes'], config['ocr']['max_seq_length'], device)
+    ocr_model = load_model(config['ocr']['model_save_path'], 
+                           config['ocr']['imgH'], 
+                           config['ocr']['nc'], 
+                           config['ocr']['num_classes'], 
+                           config['ocr']['nh'], 
+                           device)
     
     # Define the transform
     transform = transforms.Compose([

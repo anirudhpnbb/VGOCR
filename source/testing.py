@@ -6,7 +6,7 @@ from ocr import CRNN, image_to_text
 from utils import load_config
 
 def load_model(model_path, num_classes, device):
-    model = CRNN(imgH=28, nc=1, nclass=num_classes, nh=256)
+    model = CRNN(imgH=32, nc=1, nclass=num_classes, nh=256)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
@@ -27,7 +27,7 @@ def main(config, image_path):
     ])
     
     # Predict the text from the image
-    predicted_text = image_to_text(image_path, crnn_model, transform)
+    predicted_text = image_to_text(image_path, crnn_model, transform, device=device)
     
     print(f"Predicted text: {predicted_text}")
 
